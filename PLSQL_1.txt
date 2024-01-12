@@ -1,0 +1,170 @@
+/*---------------------------------------------------------------------------------------------------------------------------------------------
+1.Cree la siguiente tabla en la base de datos:
+---------------------------------------------------------------------------------------------------------------------------------------------*/
+CREATE TABLE EMPLEADO(
+   TIPO_DOCUMENTO VARCHAR2(20) NOT NULL,
+   NUMERO_DOCUMENTO VARCHAR2(20) NOT NULL,
+   NOMBRES VARCHAR2(30)NOT NULL,
+   APELLIDOS VARCHAR2(30) NOT NULL
+); 
+
+/*---------------------------------------------------------------------------------------------------------------------------------------------
+2.Cree un bloque anónimo para insertar registros duplicados en la tabla EMPLEADO, al menos 3 diferentes registros repetidos n veces.
+---------------------------------------------------------------------------------------------------------------------------------------------*/
+DECLARE
+    A NUMBER:=3;
+BEGIN
+    FOR A IN 1..3 LOOP
+        INSERT INTO EMPLEADO(TIPO_DOCUMENTO,NUMERO_DOCUMENTO,NOMBRES,APELLIDOS) VALUES ('CC','1054921875','CARLOS','JARAMILLO GIRALDO');
+        INSERT INTO EMPLEADO(TIPO_DOCUMENTO,NUMERO_DOCUMENTO,NOMBRES,APELLIDOS) VALUES ('CC','104587514','SEBASTIAN','LOPEZ GUTIERREZ');
+        INSERT INTO EMPLEADO(TIPO_DOCUMENTO,NUMERO_DOCUMENTO,NOMBRES,APELLIDOS) VALUES ('CC','854751565','HERNAN DARIO','HURTADO PELAEZ');
+    END LOOP;
+END;
+
+/*---------------------------------------------------------------------------------------------------------------------------------------------
+3.Cree una solución para eliminar los registros duplicados del punto 2.
+---------------------------------------------------------------------------------------------------------------------------------------------*/
+
+BEGIN
+    DELETE FROM EMPLEADO A WHERE A.ROWID > ANY (SELECT AP.ROWID FROM EMPLEADO AP WHERE A.NUMERO_DOCUMENTO=AP.NUMERO_DOCUMENTO);
+END;
+
+/*---------------------------------------------------------------------------------------------------------------------------------------------
+4.Modifique la tabla mediante un ALTER TABLE para adicionar las siguientes columnas:
+---------------------------------------------------------------------------------------------------------------------------------------------*/
+ALTER TABLE EMPLEADO
+ADD ID NUMBER(10) DEFAULT (1);
+
+ALTER TABLE EMPLEADO
+ADD PRIMARY KEY (ID);
+
+ALTER TABLE EMPLEADO
+ADD ID_JEFE NUMBER(10);
+
+ALTER TABLE EMPLEADO
+ADD FOREIGN KEY (ID_JEFE) REFERENCES EMPLEADO(ID);
+
+/*---------------------------------------------------------------------------------------------------------------------------------------------
+5.Crear una restricción única para los campos tipo_documento y numero_documento de la tabla EMPLEADO.
+---------------------------------------------------------------------------------------------------------------------------------------------*/
+ALTER TABLE EMPLEADO ADD CONSTRAINT UQ_TP_TIPO_DOCUMENTO UNIQUE(TIPO_DOCUMENTO,NUMERO_DOCUMENTO);
+
+/*---------------------------------------------------------------------------------------------------------------------------------------------
+6.Inserte nuevos registros (al menos 10 en total) a la tabla EMPLEADO, asigne jefes de forma tal que se genere una jerarquía
+---------------------------------------------------------------------------------------------------------------------------------------------*/
+
+INSERT INTO EMPLEADO(TIPO_DOCUMENTO,NUMERO_DOCUMENTO,NOMBRES,APELLIDOS,ID,ID_JEFE) VALUES ('CC','154471875','MARIO','GARCIA GONZALES','4','1');
+INSERT INTO EMPLEADO(TIPO_DOCUMENTO,NUMERO_DOCUMENTO,NOMBRES,APELLIDOS,ID,ID_JEFE) VALUES ('CC','1655645','LUIS','JIMENEZ HERNANDEZ','5','2');
+INSERT INTO EMPLEADO(TIPO_DOCUMENTO,NUMERO_DOCUMENTO,NOMBRES,APELLIDOS,ID,ID_JEFE) VALUES ('CE','17851221','ARMANDO','MEJIA MORALES','6','5');
+INSERT INTO EMPLEADO(TIPO_DOCUMENTO,NUMERO_DOCUMENTO,NOMBRES,APELLIDOS,ID,ID_JEFE) VALUES ('CC','15745188','GLORIA','FERNANDEZ DUARTE','7','6');
+INSERT INTO EMPLEADO(TIPO_DOCUMENTO,NUMERO_DOCUMENTO,NOMBRES,APELLIDOS,ID,ID_JEFE) VALUES ('CC','4784512','JUAN CARLOS','DUARTE ESPINOZA','8','1');
+INSERT INTO EMPLEADO(TIPO_DOCUMENTO,NUMERO_DOCUMENTO,NOMBRES,APELLIDOS,ID,ID_JEFE) VALUES ('CE','715881875','VICTOR HUGO','CONTRERAS DIAZ','9','4');
+INSERT INTO EMPLEADO(TIPO_DOCUMENTO,NUMERO_DOCUMENTO,NOMBRES,APELLIDOS,ID,ID_JEFE) VALUES ('CE','15407405','HAROLD','CASTILLO CASTRO','10','3');
+INSERT INTO EMPLEADO(TIPO_DOCUMENTO,NUMERO_DOCUMENTO,NOMBRES,APELLIDOS,ID,ID_JEFE) VALUES ('CC','194471875','WILSON','USMA GOMEZ','11','6');
+INSERT INTO EMPLEADO(TIPO_DOCUMENTO,NUMERO_DOCUMENTO,NOMBRES,APELLIDOS,ID,ID_JEFE) VALUES ('CC','154771875','IRMA ISABEL','OSORIO LOPERA','12','9');
+INSERT INTO EMPLEADO(TIPO_DOCUMENTO,NUMERO_DOCUMENTO,NOMBRES,APELLIDOS,ID,ID_JEFE) VALUES ('CE','12071875','CAMILO','GIMENEZ LONDOÑO','13','11');
+
+/*---------------------------------------------------------------------------------------------------------------------------------------------
+7.Crear una consulta donde dado un id se pueda encontrar toda la jerarquía, por ejemplo, para los jefes del punto 6, si se consulta id 4, muestre también los registros con id 3 y 2.
+---------------------------------------------------------------------------------------------------------------------------------------------*/
+SELECT LEVEL,ID,ID_JEFE FROM EMPLEADO CONNECT BY PRIOR ID_JEFE=ID START WITH ID=6;
+
+/*---------------------------------------------------------------------------------------------------------------------------------------------
+8.Crear una función donde se retorne el id del máximo jefe de una jerarquía, por ejemplo, para los jefes del punto 6, si se consulta 4, muestre el id 2.
+---------------------------------------------------------------------------------------------------------------------------------------------*/
+SET serveroutput ON
+
+CREATE OR REPLACE FUNCTION JEFE_MAX(A IN EMPLEADO.ID%TYPE)RETURN NUMBER AS
+    C number:=0;
+BEGIN
+    SELECT ID INTO C FROM EMPLEADO WHERE ID_JEFE IS NULL CONNECT BY PRIOR ID_JEFE=ID START WITH ID=A;
+    RETURN C;
+END;
+
+DECLARE 
+B NUMBER;
+BEGIN
+  B:=JEFE_MAX(6);
+  DBMS_OUTPUT.put_line(B);
+END;
+
+/*---------------------------------------------------------------------------------------------------------------------------------------------
+9.Crear un procedimiento almacenado que dada una cadena busque los empleados que tengan nombres o apellidos que la contengan. 
+Tener un parámetro de salida SYS REF Cursor para devolver los empleados.
+Por ejemplo, si se envía AL o al o Al o aL sí hay un empleado llamado Alejandro debe retornarlo o un empleado con apellido Alvarez también.
+---------------------------------------------------------------------------------------------------------------------------------------------*/
+SET serveroutput ON
+CREATE OR REPLACE PROCEDURE FIL_NAME_JEFE (A IN EMPLEADO.NOMBRES%TYPE,FIL OUT SYS_REFCURSOR)AS
+
+    ID NUMBER(10);
+    TIPO_DOCUMENTO VARCHAR2(20);
+    NUMERO_DOCUMENTO VARCHAR2(20);
+    NOMBRES VARCHAR2(30);
+    APELLIDOS VARCHAR2(30);
+    NOMBRE_JEFE VARCHAR2(40);
+    
+   /*CURSOR FIL4 IS SELECT T.ID,T.TIPO_DOCUMENTO,T.NUMERO_DOCUMENTO,T.NOMBRES,T.APELLIDOS,CONCAT(J.NOMBRES,J.APELLIDOS)AS NOMBRE_JEFE 
+           FROM EMPLEADO T, EMPLEADO J WHERE T.ID_JEFE=J.ID AND T.NOMBRES LIKE ''||A||'%' OR T.APELLIDOS LIKE ''||A||'%';*/
+BEGIN
+   
+  /* DBMS_OUTPUT.put_line('ID'||'   '||'TIPO_DOCUMENTO'||'   '||'NUMERO_DOCUMENTO'||'   '||'NOMBRES'||'       '||'APELLIDOS'||'            '||'NOMBRE_JEFE');*/
+   OPEN FIL FOR
+        SELECT T.ID,T.TIPO_DOCUMENTO,T.NUMERO_DOCUMENTO,T.NOMBRES,T.APELLIDOS,T.ID_JEFE,CONCAT(J.NOMBRES,J.APELLIDOS)AS NOMBRE_JEFE 
+           FROM EMPLEADO T, EMPLEADO J WHERE T.ID_JEFE=J.ID AND T.NOMBRES LIKE ''||UPPER(A)||'%' OR T.APELLIDOS LIKE ''||UPPER(A)||'%';/*INTO ID,TIPO_DOCUMENTO,NUMERO_DOCUMENTO,NOMBRES,APELLIDOS,NOMBRE_JEFE;
+        EXIT WHEN FIL%NOTFOUND;*/
+     /*   DBMS_OUTPUT.put_line(ID||'         '||TIPO_DOCUMENTO||'          '||NUMERO_DOCUMENTO||'           '||NOMBRES||'        '||APELLIDOS||'       '||NOMBRE_JEFE);*/
+END;
+
+/*
+BEGIN
+FIL_NAME_JEFE('A');
+END;*/
+
+/*---------------------------------------------------------------------------------------------------------------------------------------------
+10.Crear un procedimiento que invoque el procedimiento del punto 9 e imprima el resultado del CURSOR. 
+La salida debe ser formateada teniendo en cuenta el tamaño de los campos de la tabla EMPLEADO, 
+adicionando espacios a la derecha para campos de tipo VARCHAR2 y ceros a la izquierda para campos de tipo NUMBER. 
+---------------------------------------------------------------------------------------------------------------------------------------------*/
+SET serveroutput ON
+CREATE OR REPLACE PROCEDURE MOST_RESUL_CURSOR AS
+    
+    
+    /*ID EMPLEADO.ID%TYPE;
+    TIPO_DOCUMENTO EMPLEADO.TIPO_DOCUMENTO%TYPE;
+    NUMERO_DOCUMENTO EMPLEADO.NUMERO_DOCUMENTO%TYPE;
+    NOMBRES EMPLEADO.NOMBRES%TYPE;
+    APELLIDOS EMPLEADO.APELLIDOS%TYPE;
+    ID_JEFE EMPLEADO.ID%TYPE;*/
+    FIL2 SYS_REFCURSOR;
+    EMPLE EMPLEADO%ROWTYPE;
+    NOMBRE_JEFE EMPLEADO.APELLIDOS%TYPE;
+
+BEGIN
+    FIL_NAME_JEFE('A',FIL=>FIL2);
+
+    DBMS_OUTPUT.put_line('ID'||' |  '||'TIPO_DOCUMENTO'||' |  '||'NUMERO_DOCUMENTO'||' |  '||'NOMBRES'||'    |   '||'APELLIDOS'||'       |     '||'ID_JEFE');
+    LOOP
+        FETCH FIL2 INTO EMPLE.ID,EMPLE.TIPO_DOCUMENTO,EMPLE.NUMERO_DOCUMENTO,EMPLE.NOMBRES,EMPLE.APELLIDOS,EMPLE.ID_JEFE,NOMBRE_JEFE;
+        EXIT WHEN FIL2%NOTFOUND;
+        DBMS_OUTPUT.put_line(LPAD(EMPLE.ID,10,0)||'     |    '||RPAD(UPPER(EMPLE.TIPO_DOCUMENTO),20,' ')||'|'||RPAD(EMPLE.NUMERO_DOCUMENTO,20,' ')||'|'||RPAD(UPPER(EMPLE.NOMBRES),30,' ')||'|'||RPAD(UPPER(EMPLE.APELLIDOS),30,' ')||'|'||LPAD(EMPLE.ID_JEFE,10,0));
+    END LOOP;
+    CLOSE FIL2;
+END;
+
+BEGIN
+    MOST_RESUL_CURSOR;
+END;
+
+/*---------------------------------------------------------------------------------------------------------------------------------------------
+12.	Genere una consulta donde se puedan ver todos los jefes (con id_jefe igual a NULL) y los empleados bajo su mando 
+(bajo su jerarquía). Para el ejemplo del punto 6, sería: 
+---------------------------------------------------------------------------------------------------------------------------------------------*/
+
+SELECT ID_JEFE,COUNT(*) FROM EMPLEADO GROUP BY ID_JEFE
+
+
+
+
+
+
+

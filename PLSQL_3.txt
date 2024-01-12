@@ -1,0 +1,74 @@
+CREATE OR REPLACE PACKAGE TALLER_PL AS
+ 
+/*PUNTO 8 retorne el id del máximo jefe de una jerarquía*/ 
+FUNCTION JEFE_MAX(A IN EMPLEADO.ID%TYPE)RETURN NUMBER;
+
+/*PUNTO 9 procedimiento almacenado que dada una cadena busque los empleados que tengan nombres o apellidos que la contengan*/
+PROCEDURE FIL_NAME_JEFE (A IN EMPLEADO.NOMBRES%TYPE,FIL OUT SYS_REFCURSOR);
+
+/*PUNTO 10 procedimiento que invoque el procedimiento del punto 9 e imprima el resultado del CURSOR*/ 
+PROCEDURE MOST_RESUL_CURSOR;
+
+END TALLER_PL;
+
+CREATE OR REPLACE PACKAGE BODY TALLER_PL AS
+-------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------
+
+FUNCTION JEFE_MAX(A IN EMPLEADO.ID%TYPE)RETURN NUMBER IS
+    C number:=0;
+BEGIN
+    SELECT ID INTO C FROM EMPLEADO WHERE ID_JEFE IS NULL CONNECT BY PRIOR ID_JEFE=ID START WITH ID=A;
+    RETURN C;
+END;
+-------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------
+
+PROCEDURE FIL_NAME_JEFE (A IN EMPLEADO.NOMBRES%TYPE,FIL OUT SYS_REFCURSOR)IS
+
+    ID NUMBER(10);
+    TIPO_DOCUMENTO VARCHAR2(20);
+    NUMERO_DOCUMENTO VARCHAR2(20);
+    NOMBRES VARCHAR2(30);
+    APELLIDOS VARCHAR2(30);
+    NOMBRE_JEFE VARCHAR2(40);
+    
+   /*CURSOR FIL4 IS SELECT T.ID,T.TIPO_DOCUMENTO,T.NUMERO_DOCUMENTO,T.NOMBRES,T.APELLIDOS,CONCAT(J.NOMBRES,J.APELLIDOS)AS NOMBRE_JEFE 
+           FROM EMPLEADO T, EMPLEADO J WHERE T.ID_JEFE=J.ID AND T.NOMBRES LIKE ''||A||'%' OR T.APELLIDOS LIKE ''||A||'%';*/
+BEGIN
+   
+  /* DBMS_OUTPUT.put_line('ID'||'   '||'TIPO_DOCUMENTO'||'   '||'NUMERO_DOCUMENTO'||'   '||'NOMBRES'||'       '||'APELLIDOS'||'            '||'NOMBRE_JEFE');*/
+   OPEN FIL FOR
+        SELECT T.ID,T.TIPO_DOCUMENTO,T.NUMERO_DOCUMENTO,T.NOMBRES,T.APELLIDOS,T.ID_JEFE,CONCAT(J.NOMBRES,J.APELLIDOS)AS NOMBRE_JEFE 
+           FROM EMPLEADO T, EMPLEADO J WHERE T.ID_JEFE=J.ID AND T.NOMBRES LIKE ''||UPPER(A)||'%' OR T.APELLIDOS LIKE ''||UPPER(A)||'%';/*INTO ID,TIPO_DOCUMENTO,NUMERO_DOCUMENTO,NOMBRES,APELLIDOS,NOMBRE_JEFE;
+        EXIT WHEN FIL%NOTFOUND;*/
+     /*   DBMS_OUTPUT.put_line(ID||'         '||TIPO_DOCUMENTO||'          '||NUMERO_DOCUMENTO||'           '||NOMBRES||'        '||APELLIDOS||'       '||NOMBRE_JEFE);*/
+END;
+-------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------
+PROCEDURE MOST_RESUL_CURSOR IS
+
+    /*ID EMPLEADO.ID%TYPE;
+    TIPO_DOCUMENTO EMPLEADO.TIPO_DOCUMENTO%TYPE;
+    NUMERO_DOCUMENTO EMPLEADO.NUMERO_DOCUMENTO%TYPE;
+    NOMBRES EMPLEADO.NOMBRES%TYPE;
+    APELLIDOS EMPLEADO.APELLIDOS%TYPE;
+    ID_JEFE EMPLEADO.ID%TYPE;*/
+    FIL2 SYS_REFCURSOR;
+    EMPLE EMPLEADO%ROWTYPE;
+    NOMBRE_JEFE EMPLEADO.APELLIDOS%TYPE;
+
+BEGIN
+    FIL_NAME_JEFE('A',FIL=>FIL2);
+
+    DBMS_OUTPUT.put_line('ID'||' |  '||'TIPO_DOCUMENTO'||' |  '||'NUMERO_DOCUMENTO'||' |  '||'NOMBRES'||'    |   '||'APELLIDOS'||'       |     '||'ID_JEFE');
+    LOOP
+        FETCH FIL2 INTO EMPLE.ID,EMPLE.TIPO_DOCUMENTO,EMPLE.NUMERO_DOCUMENTO,EMPLE.NOMBRES,EMPLE.APELLIDOS,EMPLE.ID_JEFE,NOMBRE_JEFE;
+        EXIT WHEN FIL2%NOTFOUND;
+        DBMS_OUTPUT.put_line(LPAD(EMPLE.ID,10,0)||'     |    '||RPAD(UPPER(EMPLE.TIPO_DOCUMENTO),20,' ')||'|'||RPAD(EMPLE.NUMERO_DOCUMENTO,20,' ')||'|'||RPAD(UPPER(EMPLE.NOMBRES),30,' ')||'|'||RPAD(UPPER(EMPLE.APELLIDOS),30,' ')||'|'||LPAD(EMPLE.ID_JEFE,10,0));
+    END LOOP;
+    CLOSE FIL2;
+END;
+
+ 
+END TALLER_PL;
